@@ -1,0 +1,1140 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>เกมแยกขยะกู้โลก</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600;700;800&display=swap');
+    
+    * {
+      font-family: 'Kanit', sans-serif;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+    }
+
+    body {
+      background: linear-gradient(135deg, #a8ff78 0%, #78ffd6 100%);
+      min-height: 100vh;
+      margin: 0;
+      overflow: hidden;
+    }
+
+    .glass-panel {
+      background: rgba(255, 255, 255, 0.88);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.5);
+    }
+
+    .btn-game {
+      transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .btn-game:active {
+      transform: scale(0.92);
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-6px); }
+    }
+    .animate-float {
+      animation: float 2.5s ease-in-out infinite;
+    }
+
+    @keyframes popIn {
+      0% { transform: scale(0.5); opacity: 0; }
+      70% { transform: scale(1.1); }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    .animate-pop {
+      animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20%, 60% { transform: translateX(-8px); }
+      40%, 80% { transform: translateX(8px); }
+    }
+    .animate-shake {
+      animation: shake 0.35s ease-in-out;
+    }
+  </style>
+</head>
+<body class="flex flex-col h-screen w-screen overflow-hidden justify-between items-center p-2 sm:p-4">
+
+  <!-- Header Bar -->
+  <header class="w-full max-w-md glass-panel rounded-2xl p-2.5 sm:p-3 shadow-lg flex items-center justify-between z-20">
+    <!-- Level & Playing Time & Countdown Timer & Combo -->
+    <div class="flex items-center gap-1.5 sm:gap-2">
+      <div class="bg-emerald-600 text-white px-2 py-1 rounded-xl text-xs sm:text-sm font-bold shadow-sm">
+        ด่าน <span id="level-display">1</span>
+      </div>
+      <!-- Playing Elapsed Time Display -->
+      <div id="elapsed-box" class="bg-teal-600 text-white px-2 py-1 rounded-xl text-xs sm:text-sm font-extrabold shadow-sm flex items-center gap-1" title="เวลาที่เล่นไปแล้ว">
+        🕒 <span id="elapsed-display">00:00</span>
+      </div>
+      <!-- Countdown Timer Display -->
+      <div id="timer-box" class="bg-indigo-600 text-white px-2 py-1 rounded-xl text-xs sm:text-sm font-extrabold shadow-sm flex items-center gap-1 transition-all" title="เวลาถอยหลังที่เหลือ">
+        ⏱️ <span id="timer-display">60</span>s
+      </div>
+      <div id="combo-display" class="hidden bg-amber-500 text-white px-2 py-1 rounded-xl text-xs sm:text-sm font-extrabold shadow-sm animate-pop">
+        🔥 x<span id="combo-count">0</span>
+      </div>
+    </div>
+
+    <!-- High Score & Score -->
+    <div class="text-right flex items-center gap-2 sm:gap-3">
+      <div>
+        <span class="text-[10px] sm:text-xs font-bold text-amber-600 uppercase tracking-wider block">👑 สูงสุด</span>
+        <span id="highscore-display" class="text-sm sm:text-base font-bold text-amber-700">0</span>
+      </div>
+      <div>
+        <span class="text-[10px] sm:text-xs font-bold text-gray-500 uppercase tracking-wider block">คะแนน</span>
+        <span id="score-display" class="text-lg sm:text-xl font-extrabold text-emerald-600 tracking-tight">0</span>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="flex gap-1.5">
+      <!-- Home Button -->
+      <button id="btn-home" title="กลับหน้าแรก" class="bg-emerald-100 hover:bg-emerald-200 text-emerald-800 p-2 rounded-xl active:scale-95 transition flex items-center justify-center text-sm">
+        🏠
+      </button>
+
+      <!-- Mute/Unmute Sound -->
+      <button id="btn-sound" title="เสียง" class="bg-indigo-100 hover:bg-indigo-200 text-indigo-800 p-2 rounded-xl active:scale-95 transition flex items-center justify-center text-sm">
+        🔊
+      </button>
+
+      <!-- Quick Hint -->
+      <button id="btn-quick-hint" title="ดูคู่มือด่วน" class="bg-amber-100 hover:bg-amber-200 text-amber-800 p-2 rounded-xl active:scale-95 transition flex items-center justify-center text-sm">
+        💡
+      </button>
+
+      <!-- Pause -->
+      <button id="btn-pause" title="พักเกม" class="bg-gray-100 hover:bg-gray-200 p-2 rounded-xl text-gray-700 active:scale-95 transition">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 9 0 0118 0z"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Game Container -->
+  <main id="game-container" class="relative w-full max-w-md flex-1 my-2 rounded-3xl glass-panel shadow-xl overflow-hidden border-2 border-white/60 flex flex-col justify-between">
+    <!-- Canvas for falling items & animations -->
+    <canvas id="game-canvas" class="absolute inset-0 w-full h-full z-10"></canvas>
+
+    <!-- Lives Display -->
+    <div class="absolute top-3 left-3 z-20 flex gap-1 bg-white/70 backdrop-blur-md px-2.5 py-1 rounded-full shadow-sm border border-white/50" id="lives-container">
+      <span class="text-lg">❤️</span>
+      <span class="text-lg">❤️</span>
+      <span class="text-lg">❤️</span>
+    </div>
+
+    <!-- Power-ups Bar -->
+    <div class="absolute top-3 right-3 z-20 flex gap-1.5">
+      <button id="btn-powerup-freeze" title="แช่แข็งชั่วคราว" class="btn-game bg-sky-500 hover:bg-sky-600 text-white p-1.5 px-2 rounded-xl text-xs font-bold shadow-md flex items-center gap-1 opacity-90 border border-white/40">
+        ❄️ <span id="powerup-freeze-count">1</span>
+      </button>
+      <button id="btn-powerup-time" title="เพิ่มเวลา +10 วินาที" class="btn-game bg-purple-600 hover:bg-purple-700 text-white p-1.5 px-2 rounded-xl text-xs font-bold shadow-md flex items-center gap-1 opacity-90 border border-white/40">
+        ⏳ <span id="powerup-time-count">1</span>
+      </button>
+      <button id="btn-powerup-clearscreen" title="กวาดหมดหน้าจอ" class="btn-game bg-amber-500 hover:bg-amber-600 text-white p-1.5 px-2 rounded-xl text-xs font-bold shadow-md flex items-center gap-1 opacity-90 border border-white/40">
+        🧹 <span id="powerup-clear-count">1</span>
+      </button>
+    </div>
+
+    <!-- Level Up Banner Overlay -->
+    <div id="level-up-banner" class="absolute inset-x-0 top-1/3 z-30 flex flex-col items-center justify-center pointer-events-none hidden">
+      <div class="bg-gradient-to-r from-amber-400 via-orange-500 to-yellow-400 text-white font-black text-2xl px-6 py-2 rounded-full shadow-2xl animate-pop border-2 border-white">
+        LEVEL UP! 🎉
+      </div>
+      <span class="text-xs text-white font-bold bg-black/40 px-3 py-0.5 rounded-full mt-1 backdrop-blur-sm">เพิ่มความเร็วและคะแนนโบนัส!</span>
+    </div>
+
+    <!-- Start Tutorial Banner -->
+    <div id="start-tutorial-banner" class="absolute inset-x-4 top-16 z-20 bg-emerald-600/90 text-white p-2.5 rounded-2xl text-center text-xs font-bold shadow-lg backdrop-blur-md border border-emerald-400 hidden animate-pop">
+      👇 ลากขยะลงถังสีที่ถูกต้อง หรือแตะขยะแล้วแตะถังด้านล่าง!
+    </div>
+
+    <!-- Dynamic In-Game Helper Banner -->
+    <div class="absolute bottom-28 inset-x-3 z-20 pointer-events-none flex justify-center">
+      <div id="ingame-tip-box" class="bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-xl shadow-md border border-emerald-200 text-center max-w-[90%] transition-all">
+        <span id="ingame-tip-text" class="text-[11px] font-semibold text-emerald-800">💡 ทิป: แยกขยะให้ถูกต้องเพื่อเก็บสะสมคอมโบ x2, x3!</span>
+      </div>
+    </div>
+  </main>
+
+  <!-- Bottom Waste Bins Control Panel -->
+  <footer class="w-full max-w-md glass-panel rounded-3xl p-2 sm:p-3 shadow-lg z-20 mb-1">
+    <div class="grid grid-cols-4 gap-1.5 sm:gap-2">
+      <!-- Yellow Bin: Recycle -->
+      <button data-type="recyclable" class="bin-btn btn-game bg-amber-400 hover:bg-amber-500 text-amber-950 p-2 rounded-2xl flex flex-col items-center justify-center border-2 border-amber-300 shadow-md active:scale-95">
+        <span class="text-2xl sm:text-3xl">♻️</span>
+        <span class="text-[10px] sm:text-xs font-black mt-0.5">รีไซเคิล</span>
+        <span class="text-[8px] sm:text-[9px] opacity-80 font-bold">สีเหลือง</span>
+      </button>
+
+      <!-- Green Bin: Organic -->
+      <button data-type="organic" class="bin-btn btn-game bg-emerald-500 hover:bg-emerald-600 text-white p-2 rounded-2xl flex flex-col items-center justify-center border-2 border-emerald-400 shadow-md active:scale-95">
+        <span class="text-2xl sm:text-3xl">🍌</span>
+        <span class="text-[10px] sm:text-xs font-black mt-0.5">ขยะเปียก</span>
+        <span class="text-[8px] sm:text-[9px] opacity-80 font-bold">สีเขียว</span>
+      </button>
+
+      <!-- Blue Bin: General -->
+      <button data-type="general" class="bin-btn btn-game bg-sky-500 hover:bg-sky-600 text-white p-2 rounded-2xl flex flex-col items-center justify-center border-2 border-sky-400 shadow-md active:scale-95">
+        <span class="text-2xl sm:text-3xl">🛍️</span>
+        <span class="text-[10px] sm:text-xs font-black mt-0.5">ขยะทั่วไป</span>
+        <span class="text-[8px] sm:text-[9px] opacity-80 font-bold">สีน้ำเงิน</span>
+      </button>
+
+      <!-- Red Bin: Hazardous -->
+      <button data-type="hazardous" class="bin-btn btn-game bg-rose-500 hover:bg-rose-600 text-white p-2 rounded-2xl flex flex-col items-center justify-center border-2 border-rose-400 shadow-md active:scale-95">
+        <span class="text-2xl sm:text-3xl">🔋</span>
+        <span class="text-[10px] sm:text-xs font-black mt-0.5">อันตราย</span>
+        <span class="text-[8px] sm:text-[9px] opacity-80 font-bold">สีแดง</span>
+      </button>
+    </div>
+  </footer>
+
+  <!-- Start Screen Overlay -->
+  <div id="screen-start" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="glass-panel w-full max-w-md rounded-3xl p-5 text-center shadow-2xl flex flex-col items-center animate-pop">
+      <div class="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mb-2 shadow-inner">
+        <span class="text-3xl">♻️</span>
+      </div>
+      <h1 class="text-2xl font-black text-gray-800 tracking-tight">เกมแยกขยะกู้โลก</h1>
+      <p class="text-xs font-bold text-emerald-600 mb-3">Waste Sorting Master</p>
+
+      <!-- Highscore badge -->
+      <div class="bg-amber-100 border border-amber-300 text-amber-900 px-4 py-1.5 rounded-full text-xs font-extrabold mb-3 flex items-center gap-1.5 shadow-sm">
+        <span>👑 สถิติสูงสุดของคุณ:</span>
+        <span id="start-highscore-val" class="text-sm font-black text-amber-700">0</span>
+        <span>คะแนน</span>
+      </div>
+
+      <!-- How to play summary -->
+      <div class="bg-white/80 rounded-2xl p-3 text-left w-full text-xs text-gray-600 space-y-2 border border-gray-100 shadow-sm mb-4">
+        <p class="font-bold text-gray-800 text-center border-b pb-1">🎮 วิธีเล่นง่ายๆ:</p>
+        <div class="grid grid-cols-2 gap-1.5 text-[11px]">
+          <div class="flex items-center gap-1.5 bg-amber-50 p-1.5 rounded-lg border border-amber-200">
+            <span class="text-base">♻️</span>
+            <div><strong class="text-amber-800">สีเหลือง:</strong> รีไซเคิล</div>
+          </div>
+          <div class="flex items-center gap-1.5 bg-emerald-50 p-1.5 rounded-lg border border-emerald-200">
+            <span class="text-base">🍌</span>
+            <div><strong class="text-emerald-800">สีเขียว:</strong> ขยะเปียก</div>
+          </div>
+          <div class="flex items-center gap-1.5 bg-sky-50 p-1.5 rounded-lg border border-sky-200">
+            <span class="text-base">🛍️</span>
+            <div><strong class="text-sky-800">สีน้ำเงิน:</strong> ขยะทั่วไป</div>
+          </div>
+          <div class="flex items-center gap-1.5 bg-rose-50 p-1.5 rounded-lg border border-rose-200">
+            <span class="text-base">🔋</span>
+            <div><strong class="text-rose-800">สีแดง:</strong> ขยะอันตราย</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="w-full space-y-2">
+        <button id="btn-start" class="btn-game w-full py-3.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-extrabold text-lg rounded-2xl shadow-lg shadow-emerald-200">
+          เริ่มเล่นเกมเลย! 🚀
+        </button>
+        <button id="btn-open-guide" class="btn-game w-full py-2 bg-white/90 hover:bg-white text-gray-700 font-bold text-xs rounded-xl border border-gray-200">
+          📖 คู่มือแยกประเภทขยะฉบับเต็ม
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Cheat Sheet Popup -->
+  <div id="quick-cheat-sheet" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="glass-panel w-full max-w-xs rounded-3xl p-4 text-center shadow-2xl animate-pop">
+      <h3 class="text-base font-black text-gray-800 mb-2">💡 ตารางแยกขยะด่วน</h3>
+      <div class="text-left text-xs space-y-1.5 mb-3 bg-white/90 p-2.5 rounded-xl border">
+        <p>🟡 <strong>เหลือง (รีไซเคิล):</strong> ขวดแก้ว, กระป๋อง, กระดาษ</p>
+        <p>🟢 <strong>เขียว (เปียก):</strong> เศษอาหาร, เปลือกไม้, ก้างปลา</p>
+        <p>🔵 <strong>น้ำเงิน (ทั่วไป):</strong> ถุงพลาสติก, ถุงขนม, โฟม</p>
+        <p>🔴 <strong>แดง (อันตราย):</strong> ถ่านไฟฉาย, หลอดไฟ, ยา</p>
+      </div>
+      <button id="btn-close-cheat" class="btn-game w-full py-2 bg-emerald-500 text-white font-bold rounded-xl text-xs">
+        เข้าใจแล้ว!
+      </button>
+    </div>
+  </div>
+
+  <!-- Full Guide Modal Screen -->
+  <div id="screen-guide" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="glass-panel w-full max-w-md rounded-3xl p-5 text-left shadow-2xl max-h-[85vh] flex flex-col animate-pop">
+      <div class="flex justify-between items-center border-b pb-2 mb-3">
+        <h2 class="text-lg font-black text-gray-800 flex items-center gap-2">
+          <span>📖</span> คู่มือวิธีเล่นและประเภทขยะ
+        </h2>
+        <button id="btn-close-guide" class="text-gray-400 hover:text-gray-600 font-bold text-xl px-2">✕</button>
+      </div>
+
+      <div class="overflow-y-auto pr-1 space-y-3 text-xs text-gray-600 flex-1">
+        <div class="bg-emerald-50 border border-emerald-200 p-2.5 rounded-xl">
+          <strong class="text-emerald-800 text-sm block mb-1">🎮 วิธีควบคุมในเกม:</strong>
+          <ul class="list-disc list-inside space-y-1 text-[11px]">
+            <li><strong>การลากและวาง (Drag & Drop):</strong> แตะขยะค้างไว้แล้วลากไปวางที่ถังสีที่ถูกต้องด้านล่าง</li>
+            <li><strong>การแตะเลือก (Tap to Select):</strong> แตะขยะชิ้นที่ต้องการ แล้วกดปุ่มถังขยะด้านล่าง</li>
+          </ul>
+        </div>
+
+        <div class="space-y-2">
+          <strong class="text-gray-800 text-sm block">🗑️ ประเภทขยะทั้ง 4 หมวด (40 ชนิด):</strong>
+          
+          <div class="bg-amber-50 border border-amber-200 p-2 rounded-xl">
+            <strong class="text-amber-800">🟡 ถังสีเหลือง - ขยะรีไซเคิล:</strong>
+            <p class="text-[11px] mt-0.5">ขวดพลาสติก, กระป๋องอลูมิเนียม, กล่องกระดาษ, ขวดแก้ว, หนังสือพิมพ์, สมุดกระดาษ, แก้วพลาสติก, ซองจดหมาย ฯลฯ</p>
+          </div>
+
+          <div class="bg-emerald-50 border border-emerald-200 p-2 rounded-xl">
+            <strong class="text-emerald-800">🟢 ถังสีเขียว - ขยะเปียก / อินทรีย์:</strong>
+            <p class="text-[11px] mt-0.5">เปลือกแอปเปิ้ล, เปลือกกล้วย, ก้างปลา, ใบไม้แห้ง, เปลือกไข่, เปลือกส้ม, ตอข้าวโพด, เศษขนมปัง ฯลฯ</p>
+          </div>
+
+          <div class="bg-sky-50 border border-sky-200 p-2 rounded-xl">
+            <strong class="text-sky-800">🔵 ถังสีน้ำเงิน - ขยะทั่วไป:</strong>
+            <p class="text-[11px] mt-0.5">ถุงพลาสติก, ซองขนม, กล่องโฟม, กระดาษทิชชู่, ซองกาแฟ, หน้ากากอนามัย, แปรงสีฟันเก่า, พลาสเตอร์ ฯลฯ</p>
+          </div>
+
+          <div class="bg-rose-50 border border-rose-200 p-2 rounded-xl">
+            <strong class="text-rose-800">🔴 ถังสีแดง - ขยะอันตราย:</strong>
+            <p class="text-[11px] mt-0.5">ถ่านไฟฉาย, หลอดไฟ, กระป๋องสเปรย์, ยาหมดอายุ, แบตเตอรี่, ปรอทวัดไข้, กระป๋องสี, ยากำจัดแมลง ฯลฯ</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="pt-3 border-t mt-2">
+        <button id="btn-close-guide-bottom" class="btn-game w-full py-2.5 bg-emerald-600 text-white font-bold rounded-xl text-xs">
+          เข้าใจแล้ว กลับเข้าสู่เกม
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pause Screen Overlay -->
+  <div id="screen-pause" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="glass-panel w-full max-w-sm rounded-3xl p-6 text-center shadow-2xl animate-pop">
+      <span class="text-4xl">⏸️</span>
+      <h2 class="text-2xl font-black text-gray-800 my-2">พักเกมชั่วคราว</h2>
+      <p class="text-xs text-gray-500 mb-5">อย่าพึ่งทิ้งขยะมั่วซั่วนะ!</p>
+      <div class="space-y-2.5">
+        <button id="btn-resume" class="btn-game w-full py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-xl">
+          เล่นต่อ (Resume)
+        </button>
+        <button id="btn-restart-pause" class="btn-game w-full py-2.5 bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold rounded-xl">
+          เริ่มเล่นใหม่ (Restart)
+        </button>
+        <button id="btn-home-pause" class="btn-game w-full py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold rounded-xl flex items-center justify-center gap-1.5">
+          🏠 กลับหน้าแรก (Home)
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Game Over Screen Overlay -->
+  <div id="screen-gameover" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="glass-panel w-full max-w-sm rounded-3xl p-6 text-center shadow-2xl animate-pop">
+      <span id="gameover-icon" class="text-5xl">💔</span>
+      <h2 id="gameover-title" class="text-2xl font-black text-red-600 mt-2">จบการทำงาน!</h2>
+      <p id="gameover-reason" class="text-xs text-gray-500 mb-4">ขยะหลุดรอดเยอะเกินไปแล้ว!</p>
+
+      <!-- New Highscore Banner -->
+      <div id="new-highscore-badge" class="hidden bg-amber-400 text-amber-950 font-black text-xs py-1 px-3 rounded-full mb-3 animate-pulse">
+        🎉 ทำสถิติใหม่สูงสุดสำเร็จ! 🎉
+      </div>
+
+      <div class="bg-white/90 rounded-2xl p-4 mb-5 border shadow-inner">
+        <div class="flex justify-between items-center border-b pb-2 mb-2">
+          <span class="text-xs text-gray-500 font-bold">คะแนนที่ได้</span>
+          <span id="final-score" class="text-2xl font-black text-emerald-600">0</span>
+        </div>
+        <div class="flex justify-between items-center border-b pb-2 mb-2">
+          <span class="text-xs text-gray-500 font-bold">เวลาที่ใช้เล่นทั้งหมด</span>
+          <span id="final-elapsed" class="text-sm font-black text-teal-600">00:00</span>
+        </div>
+        <div class="flex justify-between items-center border-b pb-2 mb-2">
+          <span class="text-xs text-gray-500 font-bold">คอมโบสูงสุด</span>
+          <span id="final-combo" class="text-lg font-extrabold text-amber-500">0x</span>
+        </div>
+        <div class="flex justify-between items-center">
+          <span class="text-xs text-gray-500 font-bold">สถิติสูงสุดตลอดกาล</span>
+          <span id="final-highscore" class="text-lg font-black text-amber-600">0</span>
+        </div>
+      </div>
+
+      <div class="space-y-2.5">
+        <button id="btn-restart-gameover" class="btn-game w-full py-3.5 bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-extrabold text-lg rounded-xl shadow-lg">
+          ลองใหม่อีกครั้ง 🔄
+        </button>
+        <button id="btn-home-gameover" class="btn-game w-full py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold rounded-xl flex items-center justify-center gap-1.5">
+          🏠 กลับหน้าแรก (Home)
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- JavaScript Game Logic -->
+  <script>
+    class SoundEffects {
+      constructor() {
+        this.ctx = null;
+        this.muted = false;
+      }
+
+      init() {
+        if (!this.ctx) {
+          const AudioCtx = window.AudioContext || window.webkitAudioContext;
+          if (AudioCtx) this.ctx = new AudioCtx();
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
+
+      playPop() {
+        if (this.muted || !this.ctx) return;
+        try {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(400, this.ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(800, this.ctx.currentTime + 0.1);
+          gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.1);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start();
+          osc.stop(this.ctx.currentTime + 0.1);
+        } catch (e) {}
+      }
+
+      playWrong() {
+        if (this.muted || !this.ctx) return;
+        try {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(180, this.ctx.currentTime);
+          osc.frequency.linearRampToValueAtTime(100, this.ctx.currentTime + 0.25);
+          gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.25);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start();
+          osc.stop(this.ctx.currentTime + 0.25);
+        } catch (e) {}
+      }
+
+      playLevelUp() {
+        if (this.muted || !this.ctx) return;
+        try {
+          const now = this.ctx.currentTime;
+          [523.25, 659.25, 783.99, 1046.50].forEach((freq, idx) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.value = freq;
+            gain.gain.setValueAtTime(0.2, now + idx * 0.08);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.08 + 0.2);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(now + idx * 0.08);
+            osc.stop(now + idx * 0.08 + 0.2);
+          });
+        } catch (e) {}
+      }
+
+      playPowerup() {
+        if (this.muted || !this.ctx) return;
+        try {
+          const now = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(300, now);
+          osc.frequency.exponentialRampToValueAtTime(1200, now + 0.2);
+          gain.gain.setValueAtTime(0.3, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.2);
+        } catch (e) {}
+      }
+    }
+
+    const soundFx = new SoundEffects();
+
+    // 40 DISTINCT WASTE ITEMS (10 ITEMS PER CATEGORY)
+    const WASTE_ITEMS_DB = [
+      // RECYCLABLE (เหลือง)
+      { id: 'r1', name: 'ขวดพลาสติก', icon: '🍾', category: 'recyclable', color: '#f59e0b' },
+      { id: 'r2', name: 'กระป๋องอลูมิเนียม', icon: '🥫', category: 'recyclable', color: '#f59e0b' },
+      { id: 'r3', name: 'กล่องกระดาษ', icon: '📦', category: 'recyclable', color: '#f59e0b' },
+      { id: 'r4', name: 'ขวดแก้ว', icon: '🍶', category: 'recyclable', color: '#f59e0b' },
+      { id: 'r5', name: 'หนังสือพิมพ์', icon: '📰', category: 'recyclable', color: '#f59e0b' },
+      { id: 'r6', name: 'สมุดกระดาษ', icon: '📝', category: 'recyclable', color: '#f59e0b' },
+      { id: 'r7', name: 'แก้วพลาสติก', icon: '🥤', category: 'recyclable', color: '#f59e0b' },
+      { id: 'r8', name: 'ซองจดหมาย', icon: '✉️', category: 'recyclable', color: '#f59e0b' },
+      { id: 'r9', name: 'แผ่นพับกระดาษ', icon: '📑', category: 'recyclable', color: '#f59e0b' },
+      { id: 'r10', name: 'กระป๋องเครื่องดื่ม', icon: '🍺', category: 'recyclable', color: '#f59e0b' },
+
+      // ORGANIC (เขียว)
+      { id: 'o1', name: 'เปลือกแอปเปิ้ล', icon: '🍎', category: 'organic', color: '#10b981' },
+      { id: 'o2', name: 'เปลือกกล้วย', icon: '🍌', category: 'organic', color: '#10b981' },
+      { id: 'o3', name: 'ก้างปลา', icon: '🐟', category: 'organic', color: '#10b981' },
+      { id: 'o4', name: 'ใบไม้แห้ง', icon: '🍂', category: 'organic', color: '#10b981' },
+      { id: 'o5', name: 'เปลือกไข่', icon: '🥚', category: 'organic', color: '#10b981' },
+      { id: 'o6', name: 'ตอข้าวโพด', icon: '🌽', category: 'organic', color: '#10b981' },
+      { id: 'o7', name: 'เปลือกส้ม', icon: '🍊', category: 'organic', color: '#10b981' },
+      { id: 'o8', name: 'เปลือกแตงโม', icon: '🍉', category: 'organic', color: '#10b981' },
+      { id: 'o9', name: 'เศษกระดูก', icon: '🍖', category: 'organic', color: '#10b981' },
+      { id: 'o10', name: 'เศษขนมปัง', icon: '🍞', category: 'organic', color: '#10b981' },
+
+      // GENERAL (น้ำเงิน)
+      { id: 'g1', name: 'ถุงพลาสติก', icon: '🛍️', category: 'general', color: '#06b6d4' },
+      { id: 'g2', name: 'ซองขนม', icon: '🍿', category: 'general', color: '#06b6d4' },
+      { id: 'g3', name: 'กล่องโฟม', icon: '🍱', category: 'general', color: '#06b6d4' },
+      { id: 'g4', name: 'กระดาษทิชชู่', icon: '🧻', category: 'general', color: '#06b6d4' },
+      { id: 'g5', name: 'ซองกาแฟ', icon: '☕', category: 'general', color: '#06b6d4' },
+      { id: 'g6', name: 'หน้ากากอนามัย', icon: '😷', category: 'general', color: '#06b6d4' },
+      { id: 'g7', name: 'พลาสเตอร์ยา', icon: '🩹', category: 'general', color: '#06b6d4' },
+      { id: 'g8', name: 'ซองบะหมี่', icon: '🍜', category: 'general', color: '#06b6d4' },
+      { id: 'g9', name: 'แปรงสีฟันเก่า', icon: '🪥', category: 'general', color: '#06b6d4' },
+      { id: 'g10', name: 'หลอดพลาสติก', icon: '🥤', category: 'general', color: '#06b6d4' },
+
+      // HAZARDOUS (แดง)
+      { id: 'h1', name: 'ถ่านไฟฉาย', icon: '🔋', category: 'hazardous', color: '#f43f5e' },
+      { id: 'h2', name: 'หลอดไฟ', icon: '💡', category: 'hazardous', color: '#f43f5e' },
+      { id: 'h3', name: 'สเปรย์กระป๋อง', icon: '🧴', category: 'hazardous', color: '#f43f5e' },
+      { id: 'h4', name: 'ขวดยาหมดอายุ', icon: '💊', category: 'hazardous', color: '#f43f5e' },
+      { id: 'h5', name: 'แบตเตอรี่', icon: '📱', category: 'hazardous', color: '#f43f5e' },
+      { id: 'h6', name: 'ปรอทวัดไข้', icon: '🌡️', category: 'hazardous', color: '#f43f5e' },
+      { id: 'h7', name: 'กระป๋องสี', icon: '🎨', category: 'hazardous', color: '#f43f5e' },
+      { id: 'h8', name: 'ยากำจัดแมลง', icon: '🦟', category: 'hazardous', color: '#f43f5e' },
+      { id: 'h9', name: 'น้ำยาเคมี', icon: '☣️', category: 'hazardous', color: '#f43f5e' },
+      { id: 'h10', name: 'เครื่องสำอางเก่า', icon: '💄', category: 'hazardous', color: '#f43f5e' }
+    ];
+
+    const GENERAL_TIPS = [
+      '💡 ทิป: ขวดแก้ว, กล่องกระดาษ และกระป๋อง ใส่ถังสีเหลือง',
+      '💡 ทิป: เศษอาหาร เปลือกไม้ ย่อยสลายได้ ใส่ถังสีเขียว',
+      '💡 ทิป: ถุงพลาสติก ซองขนม กล่องโฟม ใส่ถังสีน้ำเงิน',
+      '💡 ทิป: ถ่านไฟฉาย หลอดไฟ ขวดยา ขยะอันตราย ใส่ถังสีแดง'
+    ];
+
+    const state = {
+      score: 0,
+      highScore: parseInt(localStorage.getItem('waste_sorting_highscore') || '0'),
+      lives: 3,
+      level: 1,
+      combo: 0,
+      maxCombo: 0,
+      timeLeft: 60,
+      elapsedTime: 0, // Elapsed play duration in seconds
+      items: [],
+      particles: [],
+      selectedItem: null,
+      draggedItem: null,
+      spawnTimer: 0,
+      spawnInterval: 170,
+      baseSpeed: 0.5,
+      isPaused: false,
+      isGameOver: false,
+      isPlaying: false,
+      isFrozen: false,
+      freezeTimer: 0,
+      freezeCount: 1,
+      clearCount: 1,
+      timePowerupCount: 1,
+      canvasWidth: 0,
+      canvasHeight: 0,
+      tipIndex: 0,
+      tipTimer: 0,
+      secondFrameCounter: 0
+    };
+
+    // DOM Elements
+    const canvas = document.getElementById('game-canvas');
+    const ctx = canvas.getContext('2d');
+    const gameContainer = document.getElementById('game-container');
+    const livesContainer = document.getElementById('lives-container');
+    const scoreDisplay = document.getElementById('score-display');
+    const highScoreDisplay = document.getElementById('highscore-display');
+    const startHighScoreVal = document.getElementById('start-highscore-val');
+    const levelDisplay = document.getElementById('level-display');
+    const timerDisplay = document.getElementById('timer-display');
+    const timerBox = document.getElementById('timer-box');
+    const elapsedDisplay = document.getElementById('elapsed-display');
+    const comboDisplay = document.getElementById('combo-display');
+    const comboCount = document.getElementById('combo-count');
+    const levelUpBanner = document.getElementById('level-up-banner');
+
+    // Power-up Elements
+    const btnFreeze = document.getElementById('btn-powerup-freeze');
+    const freezeCountText = document.getElementById('powerup-freeze-count');
+    const btnClearScreen = document.getElementById('btn-powerup-clearscreen');
+    const clearCountText = document.getElementById('powerup-clear-count');
+    const btnPowerupTime = document.getElementById('btn-powerup-time');
+    const powerupTimeCountText = document.getElementById('powerup-time-count');
+
+    // Game Over Elements
+    const gameOverIcon = document.getElementById('gameover-icon');
+    const gameOverTitle = document.getElementById('gameover-title');
+    const gameOverReason = document.getElementById('gameover-reason');
+
+    // In-game Hints & Overlays
+    const ingameTipText = document.getElementById('ingame-tip-text');
+    const startTutorialBanner = document.getElementById('start-tutorial-banner');
+    const quickCheatSheet = document.getElementById('quick-cheat-sheet');
+
+    // Screens & Modals
+    const screenStart = document.getElementById('screen-start');
+    const screenPause = document.getElementById('screen-pause');
+    const screenGameOver = document.getElementById('screen-gameover');
+    const screenGuide = document.getElementById('screen-guide');
+
+    // Buttons
+    const btnStart = document.getElementById('btn-start');
+    const btnHome = document.getElementById('btn-home');
+    const btnHomePause = document.getElementById('btn-home-pause');
+    const btnHomeGameOver = document.getElementById('btn-home-gameover');
+    const btnSound = document.getElementById('btn-sound');
+    const btnPause = document.getElementById('btn-pause');
+    const btnResume = document.getElementById('btn-resume');
+    const btnQuickHint = document.getElementById('btn-quick-hint');
+    const btnCloseCheat = document.getElementById('btn-close-cheat');
+    const btnOpenGuide = document.getElementById('btn-open-guide');
+    const btnCloseGuide = document.getElementById('btn-close-guide');
+    const btnCloseGuideBottom = document.getElementById('btn-close-guide-bottom');
+    const btnRestartPause = document.getElementById('btn-restart-pause');
+    const btnRestartGameOver = document.getElementById('btn-restart-gameover');
+    const binButtons = document.querySelectorAll('.bin-btn');
+
+    function resizeCanvas() {
+      state.canvasWidth = gameContainer.clientWidth;
+      state.canvasHeight = gameContainer.clientHeight;
+      canvas.width = state.canvasWidth;
+      canvas.height = state.canvasHeight;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    // Initialize High Score Display
+    highScoreDisplay.innerText = state.highScore;
+    startHighScoreVal.innerText = state.highScore;
+
+    function formatTime(totalSeconds) {
+      const mins = Math.floor(totalSeconds / 60);
+      const secs = totalSeconds % 60;
+      return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+
+    function initGame() {
+      soundFx.init();
+      state.score = 0;
+      state.lives = 3;
+      state.level = 1;
+      state.combo = 0;
+      state.maxCombo = 0;
+      state.timeLeft = 60;
+      state.elapsedTime = 0;
+      state.items = [];
+      state.particles = [];
+      state.selectedItem = null;
+      state.draggedItem = null;
+      state.spawnTimer = 0;
+      state.spawnInterval = 170;
+      state.baseSpeed = 0.5;
+      state.isPaused = false;
+      state.isGameOver = false;
+      state.isPlaying = true;
+      state.isFrozen = false;
+      state.freezeTimer = 0;
+      state.freezeCount = 1;
+      state.clearCount = 1;
+      state.timePowerupCount = 1;
+      state.secondFrameCounter = 0;
+
+      freezeCountText.innerText = state.freezeCount;
+      clearCountText.innerText = state.clearCount;
+      powerupTimeCountText.innerText = state.timePowerupCount;
+
+      updateUI();
+      hideAllModals();
+      showStartTutorial();
+    }
+
+    function updateUI() {
+      scoreDisplay.innerText = state.score;
+      levelDisplay.innerText = state.level;
+      timerDisplay.innerText = Math.max(0, state.timeLeft);
+      elapsedDisplay.innerText = formatTime(state.elapsedTime);
+
+      // Low time alert styling
+      if (state.timeLeft <= 10) {
+        timerBox.className = "bg-rose-600 text-white px-2 py-1 rounded-xl text-xs sm:text-sm font-extrabold shadow-sm flex items-center gap-1 animate-pulse scale-105";
+      } else {
+        timerBox.className = "bg-indigo-600 text-white px-2 py-1 rounded-xl text-xs sm:text-sm font-extrabold shadow-sm flex items-center gap-1 transition-all";
+      }
+      
+      // Check High Score
+      if (state.score > state.highScore) {
+        state.highScore = state.score;
+        localStorage.setItem('waste_sorting_highscore', state.highScore.toString());
+        highScoreDisplay.innerText = state.highScore;
+        startHighScoreVal.innerText = state.highScore;
+      }
+
+      // Combo Display
+      if (state.combo >= 2) {
+        comboDisplay.classList.remove('hidden');
+        comboCount.innerText = state.combo;
+      } else {
+        comboDisplay.classList.add('hidden');
+      }
+
+      // Lives
+      livesContainer.innerHTML = '';
+      for (let i = 0; i < 3; i++) {
+        const heart = document.createElement('span');
+        heart.className = 'text-lg transition-all ' + (i < state.lives ? 'opacity-100 scale-100' : 'opacity-25 scale-90 grayscale');
+        heart.innerText = '❤️';
+        livesContainer.appendChild(heart);
+      }
+    }
+
+    // Power-ups Event Listeners
+    btnFreeze.addEventListener('click', () => {
+      if (state.freezeCount > 0 && state.isPlaying && !state.isPaused) {
+        state.freezeCount--;
+        freezeCountText.innerText = state.freezeCount;
+        state.isFrozen = true;
+        state.freezeTimer = 300; // ~5 seconds at 60fps
+        soundFx.playPowerup();
+      }
+    });
+
+    btnClearScreen.addEventListener('click', () => {
+      if (state.clearCount > 0 && state.isPlaying && !state.isPaused && state.items.length > 0) {
+        state.clearCount--;
+        clearCountText.innerText = state.clearCount;
+        soundFx.playPowerup();
+        const itemsToClear = [...state.items];
+        itemsToClear.forEach(item => {
+          classifyItem(item, item.category);
+        });
+      }
+    });
+
+    btnPowerupTime.addEventListener('click', () => {
+      if (state.timePowerupCount > 0 && state.isPlaying && !state.isPaused) {
+        state.timePowerupCount--;
+        powerupTimeCountText.innerText = state.timePowerupCount;
+        state.timeLeft += 10;
+        soundFx.playPowerup();
+        updateUI();
+      }
+    });
+
+    function classifyItem(item, binType) {
+      if (!item) return;
+
+      const isCorrect = item.category === binType;
+      
+      if (isCorrect) {
+        soundFx.playPop();
+        state.combo++;
+        if (state.combo > state.maxCombo) state.maxCombo = state.combo;
+
+        const multiplier = Math.min(Math.floor(state.combo / 3) + 1, 5);
+        const gainedPoints = 10 * multiplier;
+        state.score += gainedPoints;
+
+        // +2s Time Bonus on correct sorting!
+        state.timeLeft += 2;
+
+        addParticleEffect(item.x, item.y, item.color);
+
+        // Check Level Up every 100 points
+        const newLevel = Math.floor(state.score / 100) + 1;
+        if (newLevel > state.level) {
+          state.level = newLevel;
+          state.baseSpeed = Math.min(0.5 + (state.level - 1) * 0.15, 1.8);
+          state.spawnInterval = Math.max(170 - (state.level - 1) * 10, 80);
+          state.timeLeft += 15; // +15s bonus on level up!
+          soundFx.playLevelUp();
+          
+          levelUpBanner.classList.remove('hidden');
+          setTimeout(() => levelUpBanner.classList.add('hidden'), 2000);
+        }
+      } else {
+        soundFx.playWrong();
+        state.combo = 0;
+        state.lives--;
+        gameContainer.classList.add('animate-shake');
+        setTimeout(() => gameContainer.classList.remove('animate-shake'), 400);
+
+        if (state.lives <= 0) {
+          gameOver('lives');
+        }
+      }
+
+      state.items = state.items.filter(i => i !== item);
+      if (state.selectedItem === item) state.selectedItem = null;
+      if (state.draggedItem === item) state.draggedItem = null;
+
+      updateUI();
+    }
+
+    function addParticleEffect(x, y, color) {
+      for (let i = 0; i < 12; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = Math.random() * 4 + 1;
+        state.particles.push({
+          x: x,
+          y: y,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          radius: Math.random() * 3 + 2,
+          color: color,
+          alpha: 1,
+          life: 25 + Math.random() * 15
+        });
+      }
+    }
+
+    function spawnWasteItem() {
+      if (!state.isPlaying || state.isPaused) return;
+
+      const randomWaste = WASTE_ITEMS_DB[Math.floor(Math.random() * WASTE_ITEMS_DB.length)];
+      const radius = 26;
+      const margin = radius + 20;
+      const spawnX = margin + Math.random() * (state.canvasWidth - margin * 2);
+
+      const newItem = {
+        ...randomWaste,
+        x: spawnX,
+        y: -radius,
+        radius: radius,
+        speed: state.baseSpeed + Math.random() * 0.3,
+        rotation: 0,
+        rotSpeed: (Math.random() - 0.5) * 0.04
+      };
+
+      state.items.push(newItem);
+    }
+
+    function gameOver(reason = 'lives') {
+      state.isGameOver = true;
+      state.isPlaying = false;
+
+      if (reason === 'time_up') {
+        gameOverIcon.innerText = '⏱️';
+        gameOverTitle.innerText = 'หมดเวลาแล้ว!';
+        gameOverReason.innerText = 'เวลาในการแยกขยะของคุณหมดลงแล้ว!';
+      } else {
+        gameOverIcon.innerText = '💔';
+        gameOverTitle.innerText = 'จบการทำงาน!';
+        gameOverReason.innerText = 'ขยะหลุดรอดหรือทิ้งผิดถังเยอะเกินไป!';
+      }
+
+      document.getElementById('final-score').innerText = state.score;
+      document.getElementById('final-elapsed').innerText = formatTime(state.elapsedTime);
+      document.getElementById('final-combo').innerText = state.maxCombo + 'x';
+      document.getElementById('final-highscore').innerText = state.highScore;
+
+      const newRecordBadge = document.getElementById('new-highscore-badge');
+      if (state.score >= state.highScore && state.score > 0) {
+        newRecordBadge.classList.remove('hidden');
+      } else {
+        newRecordBadge.classList.add('hidden');
+      }
+
+      screenGameOver.classList.remove('hidden');
+    }
+
+    function goHome() {
+      state.isPlaying = false;
+      state.isPaused = false;
+      state.isGameOver = false;
+      state.items = [];
+      state.particles = [];
+      hideAllModals();
+      screenStart.classList.remove('hidden');
+    }
+
+    function hideAllModals() {
+      screenStart.classList.add('hidden');
+      screenPause.classList.add('hidden');
+      screenGameOver.classList.add('hidden');
+      screenGuide.classList.add('hidden');
+      quickCheatSheet.classList.add('hidden');
+    }
+
+    function showStartTutorial() {
+      startTutorialBanner.classList.remove('hidden');
+      setTimeout(() => {
+        startTutorialBanner.classList.add('hidden');
+      }, 4000);
+    }
+
+    function getCanvasCoords(e) {
+      const rect = canvas.getBoundingClientRect();
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      return {
+        x: clientX - rect.left,
+        y: clientY - rect.top
+      };
+    }
+
+    canvas.addEventListener('mousedown', handlePointerDown);
+    canvas.addEventListener('mousemove', handlePointerMove);
+    canvas.addEventListener('mouseup', handlePointerUp);
+
+    canvas.addEventListener('touchstart', handlePointerDown, { passive: false });
+    canvas.addEventListener('touchmove', handlePointerMove, { passive: false });
+    canvas.addEventListener('touchend', handlePointerUp);
+
+    function handlePointerDown(e) {
+      if (!state.isPlaying || state.isPaused) return;
+      const coords = getCanvasCoords(e);
+
+      for (let i = state.items.length - 1; i >= 0; i--) {
+        const item = state.items[i];
+        const dist = Math.hypot(coords.x - item.x, coords.y - item.y);
+        if (dist < item.radius + 10) {
+          state.draggedItem = item;
+          state.selectedItem = item;
+          if (e.cancelable) e.preventDefault();
+          break;
+        }
+      }
+    }
+
+    function handlePointerMove(e) {
+      if (state.draggedItem) {
+        if (e.cancelable) e.preventDefault();
+        const coords = getCanvasCoords(e);
+        state.draggedItem.x = coords.x;
+        state.draggedItem.y = coords.y;
+      }
+    }
+
+    function handlePointerUp() {
+      if (state.draggedItem) {
+        if (state.draggedItem.y > state.canvasHeight - 60) {
+          const binWidth = state.canvasWidth / 4;
+          const binIndex = Math.floor(state.draggedItem.x / binWidth);
+          const binTypes = ['recyclable', 'organic', 'general', 'hazardous'];
+          const targetBin = binTypes[Math.min(Math.max(binIndex, 0), 3)];
+          classifyItem(state.draggedItem, targetBin);
+        }
+        state.draggedItem = null;
+      }
+    }
+
+    // Bin Button Clicks (Tap to sort)
+    binButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (!state.isPlaying || state.isPaused) return;
+        const binType = btn.dataset.type;
+
+        let targetItem = state.selectedItem;
+        if (!targetItem || !state.items.includes(targetItem)) {
+          targetItem = state.items.reduce((lowest, item) => {
+            return (!lowest || item.y > lowest.y) ? item : lowest;
+          }, null);
+        }
+
+        if (targetItem) {
+          classifyItem(targetItem, binType);
+        }
+      });
+    });
+
+    function gameLoop() {
+      ctx.clearRect(0, 0, state.canvasWidth, state.canvasHeight);
+
+      if (state.isPlaying && !state.isPaused) {
+        // Countdown & Playing Duration tick (approx. 60 FPS = 1 second)
+        state.secondFrameCounter++;
+        if (state.secondFrameCounter >= 60) {
+          state.timeLeft--;
+          state.elapsedTime++; // Increment playing time
+          state.secondFrameCounter = 0;
+          updateUI();
+
+          if (state.timeLeft <= 0) {
+            gameOver('time_up');
+          }
+        }
+
+        // Freeze timer logic
+        if (state.isFrozen) {
+          state.freezeTimer--;
+          if (state.freezeTimer <= 0) state.isFrozen = false;
+        }
+
+        // Spawn timer logic
+        state.spawnTimer++;
+        if (state.spawnTimer >= state.spawnInterval) {
+          spawnWasteItem();
+          state.spawnTimer = 0;
+        }
+
+        // Rotating in-game tip
+        state.tipTimer++;
+        if (state.tipTimer > 360) {
+          state.tipIndex = (state.tipIndex + 1) % GENERAL_TIPS.length;
+          ingameTipText.innerText = GENERAL_TIPS[state.tipIndex];
+          state.tipTimer = 0;
+        }
+
+        // Update & Render items
+        for (let i = state.items.length - 1; i >= 0; i--) {
+          const item = state.items[i];
+          if (item !== state.draggedItem) {
+            const currentSpeed = state.isFrozen ? item.speed * 0.4 : item.speed;
+            item.y += currentSpeed;
+            item.rotation += item.rotSpeed;
+          }
+
+          // Offscreen check
+          if (item.y > state.canvasHeight + item.radius) {
+            soundFx.playWrong();
+            state.combo = 0;
+            state.lives--;
+            state.items.splice(i, 1);
+            if (state.selectedItem === item) state.selectedItem = null;
+            updateUI();
+
+            if (state.lives <= 0) gameOver('lives');
+            continue;
+          }
+
+          // Draw Waste Item
+          ctx.save();
+          ctx.translate(item.x, item.y);
+          ctx.rotate(item.rotation);
+
+          // Selection Glow
+          if (state.selectedItem === item) {
+            ctx.beginPath();
+            ctx.arc(0, 0, item.radius + 6, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(251, 191, 36, 0.4)';
+            ctx.fill();
+            ctx.strokeStyle = '#f59e0b';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+          }
+
+          // Circle background
+          ctx.beginPath();
+          ctx.arc(0, 0, item.radius, 0, Math.PI * 2);
+          ctx.fillStyle = '#ffffff';
+          ctx.shadowColor = 'rgba(0,0,0,0.15)';
+          ctx.shadowBlur = 8;
+          ctx.fill();
+          ctx.strokeStyle = item.color;
+          ctx.lineWidth = 3;
+          ctx.stroke();
+
+          // Icon emoji
+          ctx.font = '24px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(item.icon, 0, 1);
+
+          ctx.restore();
+
+          // Label below item
+          ctx.fillStyle = '#374151';
+          ctx.font = 'bold 10px Kanit';
+          ctx.textAlign = 'center';
+          ctx.fillText(item.name, item.x, item.y + item.radius + 12);
+        }
+
+        // Update & Render Particles
+        for (let i = state.particles.length - 1; i >= 0; i--) {
+          const p = state.particles[i];
+          p.x += p.vx;
+          p.y += p.vy;
+          p.alpha -= 1 / p.life;
+
+          if (p.alpha <= 0) {
+            state.particles.splice(i, 1);
+            continue;
+          }
+
+          ctx.save();
+          ctx.globalAlpha = p.alpha;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+          ctx.fillStyle = p.color;
+          ctx.fill();
+          ctx.restore();
+        }
+      }
+
+      requestAnimationFrame(gameLoop);
+    }
+
+    btnStart.addEventListener('click', initGame);
+
+    btnSound.addEventListener('click', () => {
+      soundFx.muted = !soundFx.muted;
+      btnSound.innerText = soundFx.muted ? '🔇' : '🔊';
+    });
+
+    btnPause.addEventListener('click', () => {
+      if (!state.isPlaying) return;
+      state.isPaused = true;
+      screenPause.classList.remove('hidden');
+    });
+
+    btnResume.addEventListener('click', () => {
+      state.isPaused = false;
+      screenPause.classList.add('hidden');
+    });
+
+    btnQuickHint.addEventListener('click', () => {
+      quickCheatSheet.classList.remove('hidden');
+    });
+    btnCloseCheat.addEventListener('click', () => {
+      quickCheatSheet.classList.add('hidden');
+    });
+
+    btnOpenGuide.addEventListener('click', () => {
+      screenGuide.classList.remove('hidden');
+    });
+    btnCloseGuide.addEventListener('click', () => {
+      screenGuide.classList.add('hidden');
+    });
+    btnCloseGuideBottom.addEventListener('click', () => {
+      screenGuide.classList.add('hidden');
+    });
+
+    btnRestartPause.addEventListener('click', initGame);
+    btnRestartGameOver.addEventListener('click', initGame);
+
+    // Go Home Buttons
+    btnHome.addEventListener('click', goHome);
+    btnHomePause.addEventListener('click', goHome);
+    btnHomeGameOver.addEventListener('click', goHome);
+
+    // Start render loop
+    requestAnimationFrame(gameLoop);
+  </script>
+</body>
+</html>
